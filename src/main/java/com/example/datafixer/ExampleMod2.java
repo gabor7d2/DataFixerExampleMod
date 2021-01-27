@@ -1,4 +1,4 @@
-package com.example.examplemod;
+package com.example.datafixer;
 
 /*
 import net.minecraft.nbt.CompressedStreamTools;

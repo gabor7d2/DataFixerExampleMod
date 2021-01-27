@@ -1,17 +1,19 @@
-package com.example.examplemod;
+package com.example.datafixer;
 
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.world.World;
 import net.minecraft.world.storage.MapStorage;
 import net.minecraft.world.storage.WorldSavedData;
 
-import static com.example.examplemod.ExampleMod.MODID;
-
 public class DataFixInfoWorldData extends WorldSavedData {
-    private static final String DATA_NAME = MODID + "data";
+    private static final String DATA_NAME = ExampleMod.MODID + "data";
 
     // Whether we are fixing wrong data in the currently loaded world
     public boolean dataFixes = false;
+
+    // Whether the host player's inventory should be fixed when they join, only true if
+    // this world needs fixing and hasn't been opened in Singleplayer before
+    public boolean fixHostPlayerInventory = false;
 
     // Required constructors
     public DataFixInfoWorldData() {
@@ -25,14 +27,14 @@ public class DataFixInfoWorldData extends WorldSavedData {
     // WorldSavedData methods
     @Override
     public void readFromNBT(NBTTagCompound nbt) {
-        if (nbt.hasKey("dataFixes")) {
-            dataFixes = nbt.getBoolean("dataFixes");
-        }
+        if (nbt.hasKey("dataFixes")) dataFixes = nbt.getBoolean("dataFixes");
+        if (nbt.hasKey("fixHostPlayerInventory")) fixHostPlayerInventory = nbt.getBoolean("fixHostPlayerInventory");
     }
 
     @Override
     public NBTTagCompound writeToNBT(NBTTagCompound compound) {
         compound.setBoolean("dataFixes", dataFixes);
+        compound.setBoolean("fixHostPlayerInventory", fixHostPlayerInventory);
         return compound;
     }
 

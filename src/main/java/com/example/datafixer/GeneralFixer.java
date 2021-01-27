@@ -1,4 +1,4 @@
-package com.example.examplemod;
+package com.example.datafixer;
 
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
@@ -52,6 +52,18 @@ public class GeneralFixer implements IFixableData {
             }
         }
 
+        // Replace every ItemStack that doesn't have NBT data with granite (stone:1), except applied energistics stuff
+//        if (compound.hasKey("id", 8) && compound.hasKey("Damage", 2)) {
+//            // Make the necessary replacements
+//            String savedName = compound.getString("id");
+//            ExampleMod.printNBTCompoundMatch(compound);
+//            if (!compound.hasKey("tag") && !savedName.equals("minecraft:air") && !savedName.contains("appliedenergistics2")) {
+//                compound.setString("id", "minecraft:stone");
+//                compound.setShort("Damage", (short) 1);
+//                ExampleMod.logger.debug(" - Replaced with: {}", compound);
+//            }
+//        }
+
         // Recursive travel
         if (compound.getKeySet().size() > 0) {
             // If this compound has any elements, go through all of it's compounds and compound lists
@@ -63,12 +75,16 @@ public class GeneralFixer implements IFixableData {
                 }
 
                 // Check if this element is an NBTCompound List
-                if (compound.hasKey(key, 9)) {
+                else if (compound.hasKey(key, 9)) {
                     //ExampleMod.logger.debug("Processing compound list {}", key);
                     NBTTagList compoundList = compound.getTagList(key, 10);
                     for (int i = 0; i < compoundList.tagCount(); i++) {
                         fixItemsInCompound(compoundList.getCompoundTagAt(i));
                     }
+                }
+
+                else {
+
                 }
             });
         }

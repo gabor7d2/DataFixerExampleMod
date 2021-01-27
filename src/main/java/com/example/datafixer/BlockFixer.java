@@ -1,4 +1,4 @@
-package com.example.examplemod;
+package com.example.datafixer;
 
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
@@ -31,7 +31,7 @@ public class BlockFixer implements IFixableData {
     public NBTTagCompound fixTagCompound(final NBTTagCompound compound) {
         // Dynamically fix blocks in world
         //if (true) return compound;
-        if (!ExampleMod.dataFixes) return compound;
+        if (!ExampleMod.worldSavedData.dataFixes) return compound;
 
         final ForgeRegistry<Block> blockRegistry = (ForgeRegistry<Block>) ForgeRegistries.BLOCKS;
 
