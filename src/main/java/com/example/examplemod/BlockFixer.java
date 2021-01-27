@@ -24,14 +24,14 @@ public class BlockFixer implements IFixableData {
 
     @Override
     public int getFixVersion() {
-        return 9;
+        return 12;
     }
 
     @Override
     public NBTTagCompound fixTagCompound(final NBTTagCompound compound) {
         // Dynamically fix blocks in world
-        if (!ExampleMod.dataFixes) return compound;
         //if (true) return compound;
+        if (!ExampleMod.dataFixes) return compound;
 
         final ForgeRegistry<Block> blockRegistry = (ForgeRegistry<Block>) ForgeRegistries.BLOCKS;
 

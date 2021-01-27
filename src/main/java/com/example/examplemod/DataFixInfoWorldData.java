@@ -7,18 +7,18 @@ import net.minecraft.world.storage.WorldSavedData;
 
 import static com.example.examplemod.ExampleMod.MODID;
 
-public class ExampleWorldSavedData extends WorldSavedData {
+public class DataFixInfoWorldData extends WorldSavedData {
     private static final String DATA_NAME = MODID + "data";
 
     // Whether we are fixing wrong data in the currently loaded world
     public boolean dataFixes = false;
 
     // Required constructors
-    public ExampleWorldSavedData() {
+    public DataFixInfoWorldData() {
         super(DATA_NAME);
     }
 
-    public ExampleWorldSavedData(String s) {
+    public DataFixInfoWorldData(String s) {
         super(s);
     }
 
@@ -36,12 +36,12 @@ public class ExampleWorldSavedData extends WorldSavedData {
         return compound;
     }
 
-    public static ExampleWorldSavedData load(World world) {
+    public static DataFixInfoWorldData load(World world) {
         MapStorage storage = world.getMapStorage();
-        return (ExampleWorldSavedData) storage.getOrLoadData(ExampleWorldSavedData.class, DATA_NAME);
+        return (DataFixInfoWorldData) storage.getOrLoadData(DataFixInfoWorldData.class, DATA_NAME);
     }
 
-    public static void save(World world, ExampleWorldSavedData data) {
+    public static void save(World world, DataFixInfoWorldData data) {
         MapStorage storage = world.getMapStorage();
         storage.setData(DATA_NAME, data);
         data.markDirty();

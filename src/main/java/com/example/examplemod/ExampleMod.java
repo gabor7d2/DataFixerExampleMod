@@ -3,6 +3,9 @@ package com.example.examplemod;
 import com.google.common.collect.ImmutableList;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
+import net.minecraft.client.Minecraft;
+import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.CompressedStreamTools;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
@@ -31,7 +34,7 @@ import java.util.List;
 public class ExampleMod {
     public static final String MODID = "examplemod";
     public static final String NAME = "Example Mod";
-    public static final String VERSION = "1.4";
+    public static final String VERSION = "1.6";
 
     public static Logger logger;
 
@@ -47,6 +50,9 @@ public class ExampleMod {
     // Whether we are fixing wrong data in the currently loaded world
     public static boolean dataFixes = false;
 
+    // Whether the host player's inventory should be fixed, only ever true once for a world
+    public static boolean fixHostPlayerInventory = false;
+
     public static List<FixDefinition> fixDefinitions;
 
     @EventHandler
@@ -58,20 +64,10 @@ public class ExampleMod {
     @EventHandler
     public void init(FMLInitializationEvent event) {
         createFixDefinitions();
-
-        final ModFixs modFixs = FMLCommonHandler.instance().getDataFixer().init(ExampleMod.MODID, 11);
-        modFixs.registerFix(FixTypes.CHUNK, new BlockFixer());
-        modFixs.registerFix(FixTypes.BLOCK_ENTITY, new BlockEntityFixer());
-        modFixs.registerFix(FixTypes.ENTITY, new EntityFixer());
-
-        //modFixs.registerFix(FixTypes.ITEM_INSTANCE, new GeneralFix(compound -> printNBTCompound(compound, "Item")));
-        modFixs.registerFix(FixTypes.PLAYER, new GeneralFixer(compound -> printNBTCompound(compound, "Player")));
-        modFixs.registerFix(FixTypes.LEVEL, new GeneralFixer(compound -> printNBTCompound(compound, "Level")));
-
-        FMLCommonHandler.instance().getDataFixer().registerWalker(FixTypes.ITEM_INSTANCE, new ItemWalker());
+        registerFixes();
     }
 
-    public void createFixDefinitions() {
+    private void createFixDefinitions() {
         final ImmutableList.Builder<FixDefinition> fixDefs = new ImmutableList.Builder<>();
 
         HashMap<Integer, IBlockState> stoneVariants = new HashMap<>();
@@ -90,6 +86,37 @@ public class ExampleMod {
         fixDefinitions = fixDefs.build();
     }
 
+    private void registerFixes() {
+        final ModFixs modFixs = FMLCommonHandler.instance().getDataFixer().init(ExampleMod.MODID, 12);
+        modFixs.registerFix(FixTypes.CHUNK, new BlockFixer());
+
+        modFixs.registerFix(FixTypes.ENTITY, new GeneralFixer(compound -> {
+            // Dynamically fix items in entities' inventories/hand etc.
+            //ExampleMod.printNBTCompound(compound, "Entity");
+            if (dataFixes) GeneralFixer.fixItemsInCompound(compound);
+        }));
+
+        modFixs.registerFix(FixTypes.BLOCK_ENTITY, new GeneralFixer(compound -> {
+            // Dynamically fix items in entities' inventories/hand etc.
+            //ExampleMod.printNBTCompound(compound, "BlockEntity");
+            if (dataFixes) GeneralFixer.fixItemsInCompound(compound);
+        }));
+
+        modFixs.registerFix(FixTypes.PLAYER, new GeneralFixer(compound -> {
+            // Dynamically fix items in joining player's inventories, except when the player is host of an IntegratedServer
+            ExampleMod.printNBTCompound(compound, "Player");
+            if (dataFixes) GeneralFixer.fixItemsInCompound(compound);
+        }));
+
+        /*modFixs.registerFix(FixTypes.LEVEL, new GeneralFixer(compound -> {
+            ExampleMod.printNBTCompound(compound, "Level");
+            if (dataFixes) GeneralFixer.fixItemsInCompound(compound);
+        }));*/
+
+        //modFixs.registerFix(FixTypes.ITEM_INSTANCE, new GeneralFix(compound -> printNBTCompound(compound, "Item")));
+        //FMLCommonHandler.instance().getDataFixer().registerWalker(FixTypes.ITEM_INSTANCE, new ItemWalker());
+    }
+
     @SubscribeEvent
     public void onWorldLoad(WorldEvent.Load event) {
         if (!event.getWorld().isRemote && !worldLoaded) {
@@ -97,13 +124,13 @@ public class ExampleMod {
             logger.debug("Opened world save");
 
             // Check if this world was previously started being fixed
-            ExampleWorldSavedData worldSavedData = ExampleWorldSavedData.load(event.getWorld());
+            DataFixInfoWorldData worldSavedData = DataFixInfoWorldData.load(event.getWorld());
             if (worldSavedData != null) {
                 dataFixes = worldSavedData.dataFixes;
                 logger.debug("This world was previously flagged with dataFixes {}", dataFixes ? "enabled" : "disabled");
                 return;
             }
-            worldSavedData = new ExampleWorldSavedData();
+            worldSavedData = new DataFixInfoWorldData();
 
             // Any code from this point should only ever run once for a world
 
@@ -115,7 +142,7 @@ public class ExampleMod {
                     // Most likely a freshly created world, no need for data fixes
                     logger.debug("Level.dat doesn't exist!");
                     logger.debug("World is freshly created, no need for dataFixes.");
-                    ExampleWorldSavedData.save(event.getWorld(), worldSavedData);
+                    DataFixInfoWorldData.save(event.getWorld(), worldSavedData);
                     return;
                 }
                 NBTTagCompound nbt = CompressedStreamTools.readCompressed(new FileInputStream(levelDat));
@@ -132,20 +159,21 @@ public class ExampleMod {
                         int startVer = VersionUtil.compare(versionInSave, WRONG_DATA_VERSION_START);
                         int endVer = VersionUtil.compare(versionInSave, WRONG_DATA_VERSION_END);
                         if ((startVer == 1 || startVer == 0) && (endVer == -1 || endVer == 0)) {
+                            // Create a backup of the world in case something goes wrong with the conversion
+                            createWorldBackup();
+
                             // This world was last opened with a "wrong" version
                             dataFixes = true;
                             worldSavedData.dataFixes = true;
-
-                            // Create a backup of the world in case something goes wrong with the conversion
-                            createWorldBackup();
+                            fixHostPlayerInventory = true;
                         } else if (startVer == -1) {
                             // This world was last opened with a version that didn't introduce wrong data yet
                             // TODO set some boolean to use in the fixing process for determining what kind of conversion to do
                         }
                         // Make sure to persist whether this world needs to be fixed
-                        ExampleWorldSavedData.save(event.getWorld(), worldSavedData);
+                        DataFixInfoWorldData.save(event.getWorld(), worldSavedData);
 
-                        logger.debug("Mod version in save is {}, which means dataFixes are {}.", versionInSave, dataFixes ? "enabled" : "disabled");
+                        logger.debug("Mod version in save is {}, which means dataFixes should be {}.", versionInSave, dataFixes ? "enabled" : "disabled");
                     }
                 } else logger.debug("NBT doesnt have ModList key");
             } catch (Exception e) {
@@ -156,26 +184,46 @@ public class ExampleMod {
     }
 
     @SubscribeEvent
-    public void entityJoinWorld(PlayerEvent.PlayerLoggedInEvent event) {
+    public void playerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
         logger.debug("PlayerLoggedIn");
 
-        for (int i = 0; i < event.player.inventory.getSizeInventory(); i++) {
-            logger.debug("PlayerInventory contents at index {}: {}", i, event.player.inventory.getStackInSlot(i).serializeNBT());
-        }
-        for (int i = 0; i < event.player.getInventoryEnderChest().getSizeInventory(); i++) {
-            logger.debug("Player EnderChest contents at index {}: {}", i, event.player.inventory.getStackInSlot(i).serializeNBT());
-        }
+        EntityPlayer player = event.player;
 
-        /*event.player.inventoryContainer.inventoryItemStacks.forEach(itemStack -> {
-            //logger.debug("{}:{}", itemStack.getItem().delegate.name(), itemStack.getMetadata());
-            event.player.inventoryContainer.inventorySlots.forEach(slot -> {
-                if (slot.getStack().getCount() > 0) {
-                    ItemStack stack = slot.getStack();
-                    stack.setCount(63);
-                    event.player.inventory.setInventorySlotContents(32, stack);
+        // In theory, fixHostPlayerInventory should only ever be true once in a world's lifetime
+        // Itemfixing here only happens for the host player of this singleplayer world,
+        // any other case (players joining a DedicatedServer or a LAN IntegratedServer)
+        // is covered by the Player Datafixer.
+
+        // Note: This fix is affected by the game crashing between WorldLoad and PlayerLoggedIn events
+        // if the crash happens at that time, the host player's inventory will NOT be fixed, and will stay that way.
+        // The other case where a player's inventory won't get fixed is if a singleplayer world was copied to a server
+        // and then the conversion ran on the server, then the inventory in level.dat (the singleplayer inventory) is
+        // going to remain the same, and if copied back to open with singleplayer, that inventory will be the same
+
+        // Check if this is an IntegratedServer
+        if (Minecraft.getMinecraft().isSingleplayer()) {
+            fixHostPlayerInventory = false;
+
+            // Fix items in player's inventory
+            for (int i = 0; i < player.inventory.getSizeInventory(); i++) {
+                NBTTagCompound slotNBT = player.inventory.getStackInSlot(i).serializeNBT();
+                logger.debug("PlayerInventory contents at index {}: {}", i, slotNBT);
+                if (fixHostPlayerInventory) {
+                    GeneralFixer.fixItemsInCompound(slotNBT);
+                    player.inventory.setInventorySlotContents(i, new ItemStack(slotNBT));
                 }
-            });
-        });*/
+            }
+
+            // Fix items in player's enderchest
+            for (int i = 0; i < player.getInventoryEnderChest().getSizeInventory(); i++) {
+                NBTTagCompound slotNBT = player.getInventoryEnderChest().getStackInSlot(i).serializeNBT();
+                logger.debug("Player EnderChest contents at index {}: {}", i, slotNBT);
+                if (fixHostPlayerInventory) {
+                    GeneralFixer.fixItemsInCompound(slotNBT);
+                    player.getInventoryEnderChest().setInventorySlotContents(i, new ItemStack(slotNBT));
+                }
+            }
+        } else logger.debug("Server is dedicated, skipping PlayerLoggedIn fixes.");
     }
 
     @EventHandler
@@ -192,11 +240,17 @@ public class ExampleMod {
         } catch (Exception e) {
             logger.error("Error creating backup!!!");
             e.printStackTrace();
+            // Maybe the server should be closed to prevent damage? like how Forge MissingMappings does it
         }
     }
 
-    public static void printNBTCompound(NBTTagCompound compound, String type) {
-        String str = compound.toString().trim();
+    public static void printNBTCompound(NBTTagCompound rootCompound, String type) {
+        String str = rootCompound.toString().trim();
         if (str.length() > 2) ExampleMod.logger.debug("{} Fixer: {}", type, str);
+    }
+
+    public static void printNBTCompoundMatch(NBTTagCompound compound) {
+        String str = compound.toString().trim();
+        if (str.length() > 2) ExampleMod.logger.debug("Found NBTCompound match:{}", str);
     }
 }
