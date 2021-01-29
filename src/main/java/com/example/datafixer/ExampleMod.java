@@ -1,9 +1,14 @@
 package com.example.datafixer;
 
+import com.example.datafixer.blocks.RegistryHandler;
+import com.example.datafixer.fixes.BlockFixer;
+import com.example.datafixer.fixes.BlockFixDefinition;
+import com.example.datafixer.fixes.GeneralFixer;
 import com.google.common.collect.ImmutableList;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.CompressedStreamTools;
 import net.minecraft.nbt.NBTTagCompound;
@@ -12,6 +17,7 @@ import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.datafix.FixTypes;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.util.ModFixs;
+import net.minecraftforge.event.RegistryEvent;
 import net.minecraftforge.event.world.WorldEvent;
 import net.minecraftforge.fml.common.FMLCommonHandler;
 import net.minecraftforge.fml.common.Mod;
@@ -33,7 +39,7 @@ import java.util.List;
 public class ExampleMod {
     public static final String MODID = "examplemod";
     public static final String NAME = "Data Fixer Example Mod";
-    public static final String VERSION = "1.7";
+    public static final String VERSION = "1.8";
 
     public static Logger logger;
 
@@ -48,7 +54,7 @@ public class ExampleMod {
 
     public static DataFixInfoWorldData worldSavedData;
 
-    public static List<FixDefinition> fixDefinitions;
+    public static List<BlockFixDefinition> blockFixDefinitions;
 
     @EventHandler
     public void preInit(FMLPreInitializationEvent event) {
@@ -63,7 +69,7 @@ public class ExampleMod {
     }
 
     private void createFixDefinitions() {
-        final ImmutableList.Builder<FixDefinition> fixDefs = new ImmutableList.Builder<>();
+        final ImmutableList.Builder<BlockFixDefinition> fixDefs = new ImmutableList.Builder<>();
 
         HashMap<Integer, IBlockState> stoneVariants = new HashMap<>();
         for (int i = 0; i <= 6; i++) {
@@ -71,14 +77,14 @@ public class ExampleMod {
         }
 
         for (short i = 1; i <= 6; i++) {
-            fixDefs.add(new FixDefinition(
+            fixDefs.add(new BlockFixDefinition(
                     new ResourceLocation("minecraft", "stone"), i, stoneVariants.get(i - 1)));
         }
 
-        fixDefs.add(new FixDefinition(
+        fixDefs.add(new BlockFixDefinition(
                 new ResourceLocation("minecraft", "grass"), (short) 0, stoneVariants.get(6)));
 
-        fixDefinitions = fixDefs.build();
+        blockFixDefinitions = fixDefs.build();
     }
 
     private void registerFixes() {
@@ -185,7 +191,8 @@ public class ExampleMod {
 
         EntityPlayer player = event.player;
 
-        // In theory, fixHostPlayerInventory should only ever be true once in a world's lifetime
+        // The first time this world is loaded in singleplayer, fixHostPlayerInventory
+        // is going to be set to false, and never run again.
         // Itemfixing here only happens for the host player of this singleplayer world,
         // any other case (players joining a DedicatedServer or a LAN IntegratedServer)
         // is covered by the Player Datafixer.
@@ -222,6 +229,32 @@ public class ExampleMod {
         worldLoaded = false;
         worldSavedData = null;
         logger.debug("Closed world save");
+    }
+
+    @SubscribeEvent
+    public void missingMappingsBlock(RegistryEvent.MissingMappings<Block> event) {
+        logger.debug(event.getAllMappings().size());
+        logger.debug(event.getMappings().size());
+        logger.debug(event.getName());
+
+        for (RegistryEvent.MissingMappings.Mapping<Block> entry : event.getAllMappings()) {
+            logger.debug(entry.id);
+            logger.debug(entry.key);
+            if (entry.key.toString().equals("examplemod:test1")) entry.remap(RegistryHandler.BLOCKS.get(new ResourceLocation("examplemod:test2")));
+        }
+    }
+
+    @SubscribeEvent
+    public void missingMappingsItem(RegistryEvent.MissingMappings<Item> event) {
+        logger.debug(event.getAllMappings().size());
+        logger.debug(event.getMappings().size());
+        logger.debug(event.getName());
+
+        for (RegistryEvent.MissingMappings.Mapping<Item> entry : event.getAllMappings()) {
+            logger.debug(entry.id);
+            logger.debug(entry.key);
+            if (entry.key.toString().equals("examplemod:test1")) entry.remap(RegistryHandler.ITEMS.get(new ResourceLocation("examplemod:test2")));
+        }
     }
 
     private static void createWorldBackup() {

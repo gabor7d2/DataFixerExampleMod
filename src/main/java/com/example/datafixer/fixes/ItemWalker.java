@@ -1,5 +1,6 @@
-package com.example.datafixer;
+package com.example.datafixer.fixes;
 
+import com.example.datafixer.ExampleMod;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.datafix.IDataFixer;
 import net.minecraft.util.datafix.IDataWalker;

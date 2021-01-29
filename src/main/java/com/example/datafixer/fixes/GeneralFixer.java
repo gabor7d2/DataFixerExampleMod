@@ -1,5 +1,6 @@
-package com.example.datafixer;
+package com.example.datafixer.fixes;
 
+import com.example.datafixer.ExampleMod;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.util.datafix.IFixableData;
@@ -40,12 +41,13 @@ public class GeneralFixer implements IFixableData {
             String savedName = compound.getString("id");
             short savedMetadata = compound.getShort("Damage");
             ExampleMod.printNBTCompoundMatch(compound);
-            for (FixDefinition fix : ExampleMod.fixDefinitions) {
+            for (BlockFixDefinition fixDef : ExampleMod.blockFixDefinitions) {
                 // Check if this fix should handle this item
-                if (fix.oldName.toString().equals(savedName) && fix.oldMetadata == savedMetadata) {
+                if (fixDef.oldName.toString().equals(savedName) && fixDef.oldMetadata == savedMetadata) {
                     // Fix the item
-                    compound.setString("id", fix.newBlockState.getBlock().getRegistryName().toString());
-                    compound.setShort("Damage", (short) fix.newBlockState.getBlock().getMetaFromState(fix.newBlockState));
+                    // TODO ItemFixDefinition to also allow fixing items
+                    compound.setString("id", fixDef.newBlockState.getBlock().getRegistryName().toString());
+                    compound.setShort("Damage", (short) fixDef.newBlockState.getBlock().getMetaFromState(fixDef.newBlockState));
                     ExampleMod.logger.debug(" - Replaced with: {}", compound);
                     break;
                 }
@@ -81,10 +83,6 @@ public class GeneralFixer implements IFixableData {
                     for (int i = 0; i < compoundList.tagCount(); i++) {
                         fixItemsInCompound(compoundList.getCompoundTagAt(i));
                     }
-                }
-
-                else {
-
                 }
             });
         }

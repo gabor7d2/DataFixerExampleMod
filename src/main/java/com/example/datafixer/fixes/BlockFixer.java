@@ -1,5 +1,6 @@
-package com.example.datafixer;
+package com.example.datafixer.fixes;
 
+import com.example.datafixer.ExampleMod;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.nbt.NBTTagCompound;
@@ -30,30 +31,29 @@ public class BlockFixer implements IFixableData {
     @Override
     public NBTTagCompound fixTagCompound(final NBTTagCompound compound) {
         // Dynamically fix blocks in world
-        //if (true) return compound;
         if (!ExampleMod.worldSavedData.dataFixes) return compound;
 
         final ForgeRegistry<Block> blockRegistry = (ForgeRegistry<Block>) ForgeRegistries.BLOCKS;
 
         // Maps old block IDs to an array of flattening definitions indexed by their old metadata
-        final Map<Integer, FixDefinition[]> flattingDefinitionsPerBlockID = new HashMap<>();
+        final Map<Integer, BlockFixDefinition[]> flattingDefinitionsPerBlockID = new HashMap<>();
 
-        ExampleMod.fixDefinitions.stream()
-                .map(fixDefinition -> {
+        ExampleMod.blockFixDefinitions.stream()
+                .map(fixDef -> {
                     // Get the ID of the old name
-                    int oldID = blockRegistry.getID(fixDefinition.oldName);
+                    int oldID = blockRegistry.getID(fixDef.oldName);
 
                     // If the ID exists in this save, return a pair of the ID and the definition; else return an empty pair
-                    return Optional.ofNullable(oldID > 0 ? Pair.of(oldID, fixDefinition) : null);
+                    return Optional.ofNullable(oldID > 0 ? Pair.of(oldID, fixDef) : null);
                 })
                 .forEach(optionalPair -> {
                     optionalPair.ifPresent(pair -> { // If the ID exists in this save,
                         final Integer blockID = pair.getKey();
-                        final FixDefinition fixDefinition = pair.getValue();
+                        final BlockFixDefinition fixDef = pair.getValue();
 
                         // Add the definition to the ID's array using the old metadata as an index
-                        final FixDefinition[] fixDefinitions = flattingDefinitionsPerBlockID.computeIfAbsent(blockID, id -> new FixDefinition[16]);
-                        fixDefinitions[fixDefinition.oldMetadata] = fixDefinition;
+                        final BlockFixDefinition[] blockFixDefinitions = flattingDefinitionsPerBlockID.computeIfAbsent(blockID, id -> new BlockFixDefinition[16]);
+                        blockFixDefinitions[fixDef.oldMetadata] = fixDef;
                     });
                 });
 
@@ -85,14 +85,14 @@ public class BlockFixer implements IFixableData {
                     final int blockID = blockIDExtension << 8 | (blockIDs[blockIndex] & 255);
                     final int metadata = metadataArray.get(x, y, z);
 
-                    final FixDefinition[] fixDefinitions = flattingDefinitionsPerBlockID.get(blockID);
+                    final BlockFixDefinition[] blockFixDefinitions = flattingDefinitionsPerBlockID.get(blockID);
 
-                    if (fixDefinitions != null) {
-                        final FixDefinition fixDefinition = fixDefinitions[metadata];
+                    if (blockFixDefinitions != null) {
+                        final BlockFixDefinition blockFixDefinition = blockFixDefinitions[metadata];
 
-                        if (fixDefinition != null) {
+                        if (blockFixDefinition != null) {
                             // Calculate the new block ID, block ID extension and metadata from the block state's ID
-                            final int blockStateID = blockStateIDMap.get(fixDefinition.newBlockState);
+                            final int blockStateID = blockStateIDMap.get(blockFixDefinition.newBlockState);
                             final byte newBlockID = (byte) (blockStateID >> 4 & 255);
                             final byte newBlockIDExtension = (byte) (blockStateID >> 12 & 15);
                             final byte newMetadata = (byte) (blockStateID & 15);
