@@ -45,8 +45,8 @@ public class RegistryHandler {
     }
 
     private static void createBlocks() {
-        //Block test = createBlock("test1", new Block(Material.ROCK));
-        Block test = createBlock("test2", new Block(Material.ROCK));
+        Block test = createBlock("test1", new Block(Material.ROCK));
+        //Block test = createBlock("test2", new Block(Material.ROCK));
 
         BLOCKS.put(test.getRegistryName(), test);
     }

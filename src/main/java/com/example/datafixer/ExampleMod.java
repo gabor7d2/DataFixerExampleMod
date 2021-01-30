@@ -84,6 +84,9 @@ public class ExampleMod {
         fixDefs.add(new BlockFixDefinition(
                 new ResourceLocation("minecraft", "grass"), (short) 0, stoneVariants.get(6)));
 
+        fixDefs.add(new BlockFixDefinition(
+                new ResourceLocation("examplemod:test2"), (short) 0, RegistryHandler.BLOCKS.get(new ResourceLocation("examplemod:test1")).getStateFromMeta(0)));
+
         blockFixDefinitions = fixDefs.build();
     }
 
@@ -240,7 +243,8 @@ public class ExampleMod {
         for (RegistryEvent.MissingMappings.Mapping<Block> entry : event.getAllMappings()) {
             logger.debug(entry.id);
             logger.debug(entry.key);
-            if (entry.key.toString().equals("examplemod:test1")) entry.remap(RegistryHandler.BLOCKS.get(new ResourceLocation("examplemod:test2")));
+            entry.ignore();
+            //if (entry.key.toString().equals("examplemod:test2")) entry.remap(RegistryHandler.BLOCKS.get(new ResourceLocation("examplemod:test1")));
         }
     }
 
@@ -253,7 +257,8 @@ public class ExampleMod {
         for (RegistryEvent.MissingMappings.Mapping<Item> entry : event.getAllMappings()) {
             logger.debug(entry.id);
             logger.debug(entry.key);
-            if (entry.key.toString().equals("examplemod:test1")) entry.remap(RegistryHandler.ITEMS.get(new ResourceLocation("examplemod:test2")));
+            entry.ignore();
+            //if (entry.key.toString().equals("examplemod:test2")) entry.remap(RegistryHandler.ITEMS.get(new ResourceLocation("examplemod:test1")));
         }
     }
 
